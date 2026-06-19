@@ -3,13 +3,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { TooltipProvider } from "@/components/ui/Tooltip.jsx";
 import { AuthProvider } from "@/context/AuthContext";
 import AniMe from "./pages/AniMe.jsx";
 import Landing from "./pages/Landing.jsx";
 import MangaSearch from "./pages/MangaSearch.jsx";
 import MangaDetail from "./pages/MangaDetail.jsx";
-import Videos from "./pages/Videos.jsx";
+import Videos from "./pages/Videos.tsx";
 import Community from "./pages/Community.jsx";
 import SettingsPage from "./pages/SettingsPage.jsx";
 
