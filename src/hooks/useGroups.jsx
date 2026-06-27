@@ -127,7 +127,7 @@ export const useGroups = () => {
     let groupName = group.name;
 
     if (group.suggested) {
-      const groupRef = await addDoc(collection(db, "groups"), {
+      await setDoc(doc(db, "groups", group.id), {
         name: group.name,
         desc: group.desc || "",
         category: group.category || "Allgemein",
@@ -136,9 +136,6 @@ export const useGroups = () => {
         createdFromSuggestion: true,
         createdAt: serverTimestamp(),
       });
-
-      groupId = groupRef.id;
-      groupName = group.name;
     }
 
     await setDoc(doc(db, "groupMembers", getMemberId(user.uid, groupId)), {

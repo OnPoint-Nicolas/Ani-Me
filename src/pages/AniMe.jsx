@@ -155,7 +155,7 @@ const AniMe = () => {
                 <p className="text-xs leading-5 text-muted-foreground">
                   Du hast noch keine Gruppen ausgewählt. Suche dir in der Community passende Gruppen aus.
                 </p>
-                <Link to="/community" className="inline-flex rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground">
+                <Link to="/community?tab=gruppen" className="inline-flex rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground">
                   Gruppen finden
                 </Link>
               </div>
@@ -164,7 +164,7 @@ const AniMe = () => {
                 {joinedGroups.map((group) => (
                   <Link
                     key={group.id}
-                    to="/community"
+                    to="/community?tab=gruppen"
                     className="rounded-full bg-secondary px-3 py-1.5 text-muted-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
                     title={group.desc || group.category}
                   >
@@ -177,6 +177,35 @@ const AniMe = () => {
         </aside>
 
         <section className="mx-auto w-full max-w-3xl space-y-5">
+          <section className="rounded-lg border border-anime-border bg-anime-surface p-4 lg:hidden">
+            <h2 className="mb-3 flex items-center gap-2 text-base font-bold">
+              <Users className="h-4 w-4 text-primary" /> Deine Gruppen
+            </h2>
+            {joinedGroups.length === 0 ? (
+              <div className="space-y-3">
+                <p className="text-xs leading-5 text-muted-foreground">
+                  Du hast noch keine Gruppen ausgewählt. Erstelle oder wähle Gruppen in der Community.
+                </p>
+                <Link to="/community?tab=gruppen" className="inline-flex rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground">
+                  Gruppen finden
+                </Link>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2 text-xs">
+                {joinedGroups.map((group) => (
+                  <Link
+                    key={group.id}
+                    to="/community?tab=gruppen"
+                    className="rounded-full bg-secondary px-3 py-1.5 text-muted-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+                    title={group.desc || group.category}
+                  >
+                    {group.name}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
+
           <PostComposer
             value={postText}
             onChange={setPostText}

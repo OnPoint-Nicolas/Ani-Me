@@ -24,6 +24,7 @@ import { useFriends } from "@/hooks/useFriends";
 import { useGroups } from "@/hooks/useGroups";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { db } from "@/lib/firebase";
+import { useLocation } from "react-router-dom";
 
 const FAVORITE_OPTIONS = [
   "One Piece",
@@ -118,11 +119,14 @@ const MatchRing = ({ percent }) => (
 );
 
 const Community = () => {
+  const location = useLocation();
+  const initialTab = new URLSearchParams(location.search).get("tab") || "match";
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState("match");
+  const [activeTab, setActiveTab] = useState(["match", "mitglieder", "gruppen", "aktivitaet"].includes(initialTab) ? initialTab : "match");
   const [favoriteDraft, setFavoriteDraft] = useState("");
   const [groupForm, setGroupForm] = useState({ name: "", desc: "", category: "Allgemein" });
   const [groupError, setGroupError] = useState("");
+  const [busyGroupId, setBusyGroupId] = useState("");
   const { user } = useAuth();
   const { profile } = useUserProfile();
   const {
@@ -179,6 +183,32 @@ const Community = () => {
     }
 
     setGroupForm({ name: "", desc: "", category: "Allgemein" });
+  };
+
+  const selectGroup = async (group) => {
+    setGroupError("");
+    setBusyGroupId(group.id);
+
+    try {
+      await joinGroup(group);
+    } catch {
+      setGroupError("Gruppe konnte nicht ausgewählt werden.");
+    } finally {
+      setBusyGroupId("");
+    }
+  };
+
+  const unselectGroup = async (groupId) => {
+    setGroupError("");
+    setBusyGroupId(groupId);
+
+    try {
+      await leaveGroup(groupId);
+    } catch {
+      setGroupError("Gruppe konnte nicht abgewählt werden.");
+    } finally {
+      setBusyGroupId("");
+    }
   };
 
   const matchedUsers = useMemo(() => {
@@ -445,12 +475,13 @@ const Community = () => {
                         </div>
                         <button
                           type="button"
-                          onClick={() => (group.joined ? leaveGroup(group.id) : joinGroup(group))}
+                          onClick={() => (group.joined ? unselectGroup(group.id) : selectGroup(group))}
+                          disabled={busyGroupId === group.id}
                           className={`mt-3 rounded-md px-3 py-1.5 text-[10px] font-bold transition-colors ${
                             group.joined ? "bg-anime-online/20 text-anime-online" : "bg-primary text-primary-foreground"
                           }`}
                         >
-                          {group.joined ? "Ausgewählt" : "Auswählen"}
+                          {busyGroupId === group.id ? "Speichert..." : group.joined ? "Ausgewählt" : "Auswählen"}
                         </button>
                       </div>
                     ))}
@@ -595,10 +626,11 @@ const Community = () => {
                       <p className="min-h-8 text-[10px] text-muted-foreground">{group.desc || "Keine Beschreibung vorhanden."}</p>
                       <button
                         type="button"
-                        onClick={() => leaveGroup(group.id)}
-                        className="mt-3 rounded-md bg-destructive/10 px-3 py-1 text-[10px] font-bold text-destructive"
+                        onClick={() => unselectGroup(group.id)}
+                        disabled={busyGroupId === group.id}
+                        className="mt-3 rounded-md bg-destructive/10 px-3 py-1 text-[10px] font-bold text-destructive disabled:opacity-50"
                       >
-                        Abwählen
+                        {busyGroupId === group.id ? "Speichert..." : "Abwählen"}
                       </button>
                     </div>
                   ))}
@@ -628,10 +660,11 @@ const Community = () => {
                       <p className="min-h-8 text-[10px] text-muted-foreground">{group.desc || "Keine Beschreibung vorhanden."}</p>
                       <button
                         type="button"
-                        onClick={() => joinGroup(group)}
-                        className="mt-3 rounded-md bg-primary px-3 py-1 text-[10px] font-bold text-primary-foreground"
+                        onClick={() => selectGroup(group)}
+                        disabled={busyGroupId === group.id}
+                        className="mt-3 rounded-md bg-primary px-3 py-1 text-[10px] font-bold text-primary-foreground disabled:opacity-50"
                       >
-                        Auswählen
+                        {busyGroupId === group.id ? "Speichert..." : "Auswählen"}
                       </button>
                     </div>
                   ))}
@@ -663,14 +696,17 @@ const Community = () => {
                     </span>
 
                     <button
-                      onClick={() => (g.joined ? leaveGroup(g.id) : joinGroup(g))}
+                      onClick={() => (g.joined ? unselectGroup(g.id) : selectGroup(g))}
+                      disabled={busyGroupId === g.id}
                       className={`flex items-center gap-1 rounded-md px-3 py-1 text-[10px] font-medium transition-colors ${
                         g.joined
                           ? "bg-anime-online/20 text-anime-online"
                           : "bg-primary text-primary-foreground hover:opacity-90"
                       }`}
                     >
-                      {g.joined ? (
+                      {busyGroupId === g.id ? (
+                        "Speichert..."
+                      ) : g.joined ? (
                         <>
                           <Check className="h-3 w-3" /> Beigetreten
                         </>
