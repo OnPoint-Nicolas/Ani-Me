@@ -11,6 +11,7 @@ const MangaDetailPage = () => {
   const { id } = useParams();
 
   const [manga, setManga] = useState(null);
+  const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -25,8 +26,17 @@ const MangaDetailPage = () => {
 
         const data = await res.json();
         setManga(data.data);
+
+        const newsRes = await fetch(`https://api.jikan.moe/v4/manga/${id}/news`);
+        if (newsRes.ok) {
+          const newsData = await newsRes.json();
+          setNews(Array.isArray(newsData.data) ? newsData.data.slice(0, 3) : []);
+        } else {
+          setNews([]);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unbekannter Fehler");
+        setNews([]);
       } finally {
         setLoading(false);
       }
@@ -145,6 +155,37 @@ const MangaDetailPage = () => {
             >
               Auf MyAnimeList ansehen →
             </a>
+
+            <div className="mt-8 border-t border-anime-border pt-5">
+              <h2 className="text-sm font-semibold text-foreground mb-3">
+                Neuigkeiten
+              </h2>
+
+              {news.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Für diesen Manga wurden keine aktuellen News gefunden.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {news.map((item) => (
+                    <a
+                      key={item.mal_id || item.url}
+                      href={item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block rounded-md border border-anime-border bg-background p-3 hover:bg-anime-surface-hover"
+                    >
+                      <p className="text-sm font-semibold text-foreground">
+                        {item.title}
+                      </p>
+                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                        {item.excerpt || "News auf MyAnimeList öffnen."}
+                      </p>
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

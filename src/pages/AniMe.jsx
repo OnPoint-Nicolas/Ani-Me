@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
-import { Hash, TrendingUp, Users } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Hash, Loader2, TrendingUp, Users } from "lucide-react";
+import { Link } from "react-router-dom";
 import NavBar from "@/components/NavBar";
 import Footer from "@/components/Footer";
 import PostComposer from "@/components/PostComposer";
@@ -15,14 +16,6 @@ import postImage3 from "@/assets/post-image-3.jpg";
 import avatarSakura from "@/assets/avatar-sakura.jpg";
 import avatarTim from "@/assets/avatar-tim.jpg";
 import avatarJason from "@/assets/avatar-jason.jpg";
-
-const trendingTags = [
-  { tag: "OnePiece", posts: "12.4K" },
-  { tag: "AttackOnTitan", posts: "8.9K" },
-  { tag: "JujutsuKaisen", posts: "7.2K" },
-  { tag: "DragonBall", posts: "6.1K" },
-  { tag: "Naruto", posts: "5.8K" },
-];
 
 const samplePosts = [
   {
@@ -66,7 +59,26 @@ const AniMe = () => {
   const [pendingMedia, setPendingMedia] = useState(null);
   const [posting, setPosting] = useState(false);
   const [postError, setPostError] = useState("");
+  const [trendingManga, setTrendingManga] = useState([]);
+  const [trendingLoading, setTrendingLoading] = useState(true);
   const { posts: firePosts, createPost } = usePosts();
+
+  useEffect(() => {
+    const loadTrending = async () => {
+      try {
+        const res = await fetch("https://api.jikan.moe/v4/top/manga?limit=5");
+        if (!res.ok) throw new Error("Trending konnte nicht geladen werden.");
+        const data = await res.json();
+        setTrendingManga(Array.isArray(data.data) ? data.data : []);
+      } catch {
+        setTrendingManga([]);
+      } finally {
+        setTrendingLoading(false);
+      }
+    };
+
+    loadTrending();
+  }, []);
 
   const posts = useMemo(() => {
     if (!firePosts.length) return samplePosts;
@@ -109,13 +121,26 @@ const AniMe = () => {
               <TrendingUp className="h-5 w-5 text-anime-brand" /> Trending
             </h2>
             <div className="space-y-3">
-              {trendingTags.map((item, index) => (
-                <div key={item.tag} className="grid grid-cols-[24px_1fr_auto] items-center gap-2 text-sm">
-                  <span className="text-muted-foreground">{index + 1}</span>
-                  <span className="flex items-center gap-2 font-semibold"><Hash className="h-4 w-4 text-primary" /> {item.tag}</span>
-                  <span className="text-xs text-muted-foreground">{item.posts}</span>
+              {trendingLoading && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Lade Ranking...
                 </div>
+              )}
+
+              {!trendingLoading && trendingManga.map((item, index) => (
+                <Link key={item.mal_id} to={`/manga/${item.mal_id}`} className="grid grid-cols-[24px_1fr_auto] items-center gap-2 rounded-md text-sm hover:text-anime-brand">
+                  <span className="text-muted-foreground">{index + 1}</span>
+                  <span className="flex min-w-0 items-center gap-2 font-semibold">
+                    <Hash className="h-4 w-4 shrink-0 text-primary" />
+                    <span className="truncate">{item.title}</span>
+                  </span>
+                  <span className="text-xs text-muted-foreground">{item.score || "-"}</span>
+                </Link>
               ))}
+
+              {!trendingLoading && trendingManga.length === 0 && (
+                <p className="text-xs text-muted-foreground">Kein Ranking geladen.</p>
+              )}
             </div>
           </section>
 
