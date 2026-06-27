@@ -44,7 +44,7 @@ const FALLBACK_MATCHES = [
   {
     uid: "demo-max",
     name: "Max",
-    email: "Watch-Buddy",
+    role: "Watch-Buddy",
     photoURL: null,
     online: true,
     animeFavorites: ["One Piece", "Jujutsu Kaisen", "Solo Leveling", "Berserk", "Blue Lock"],
@@ -52,7 +52,7 @@ const FALLBACK_MATCHES = [
   {
     uid: "demo-yuna",
     name: "Yuna",
-    email: "Manga-Buddy",
+    role: "Manga-Buddy",
     photoURL: null,
     online: true,
     animeFavorites: ["Romance Manga", "Frieren", "Demon Slayer", "Jujutsu Kaisen", "Naruto"],
@@ -60,7 +60,7 @@ const FALLBACK_MATCHES = [
   {
     uid: "demo-kenji",
     name: "Kenji",
-    email: "Diskussionspartner",
+    role: "Diskussionspartner",
     photoURL: null,
     online: false,
     animeFavorites: ["Berserk", "Chainsaw Man", "Attack on Titan", "Solo Leveling", "One Piece"],
@@ -220,7 +220,7 @@ const Community = () => {
   const filteredUsers = matchedUsers.filter(
     (person) =>
       person.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      person.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      person.role?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       person.animeFavorites?.some((favorite) => favorite.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
@@ -489,7 +489,7 @@ const Community = () => {
                     <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">{person.matchPercent}% Match</span>
                   </div>
                   <p className="truncate text-[10px] text-muted-foreground">
-                    {person.sharedFavorites.length ? person.sharedFavorites.join(", ") : person.isFriend ? "Freund" : person.requestSent ? "Anfrage gesendet" : person.email}
+                    {person.sharedFavorites.length ? person.sharedFavorites.join(", ") : person.isFriend ? "Freund" : person.requestSent ? "Anfrage gesendet" : person.requestIncoming ? "Anfrage offen" : person.role || "Anime-Fan"}
                   </p>
                 </div>
 

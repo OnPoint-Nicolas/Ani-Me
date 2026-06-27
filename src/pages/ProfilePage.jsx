@@ -46,7 +46,7 @@ const ProfilePage = () => {
   const userPosts = posts.filter((post) => post.authorUid === user?.uid);
   const totalLikes = userPosts.reduce((sum, post) => sum + (post.likes || 0), 0);
   const mediaPosts = userPosts.filter((post) => post.mediaUrl);
-  const displayName = profile?.name || user?.name || "Anime Fan";
+  const displayName = profile?.alias || profile?.name || user?.alias || user?.name || "Anime Fan";
   const displayEmail = user?.email || "";
   const displayAvatar = user?.photoURL || avatarSakura;
   const displayBio = profile?.bio || "Noch keine Bio eingetragen.";
@@ -116,7 +116,7 @@ const ProfilePage = () => {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     className="mb-2 w-full rounded-md border border-anime-border bg-secondary p-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                    placeholder="Benutzername"
+                    placeholder="Öffentlicher Alias"
                   />
                   <textarea
                     value={bio}

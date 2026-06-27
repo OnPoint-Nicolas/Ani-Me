@@ -8,7 +8,7 @@ import {
   signOut,
   updateProfile,
 } from "firebase/auth";
-import { doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth } from "@/lib/firebase";
 import { db } from "@/lib/firebase";
 
@@ -16,13 +16,19 @@ const AuthContext = createContext(null);
 
 const googleProvider = new GoogleAuthProvider();
 
-const mapUser = (fbUser) => {
+const getDefaultAlias = (uid) => {
+  if (!uid) return "Anime Fan";
+  return `AnimeFan-${uid.slice(0, 5)}`;
+};
+
+const mapUser = (fbUser, alias) => {
   if (!fbUser) return null;
 
   return {
     uid: fbUser.uid,
     email: fbUser.email,
-    name: fbUser.displayName || fbUser.email?.split("@")[0] || "Anime Fan",
+    name: alias || getDefaultAlias(fbUser.uid),
+    alias: alias || getDefaultAlias(fbUser.uid),
     photoURL: fbUser.photoURL,
   };
 };
@@ -46,15 +52,19 @@ const getAuthError = (error) => {
   }
 };
 
-const saveUserProfile = async (fbUser) => {
+const saveUserProfile = async (fbUser, alias) => {
   if (!fbUser) return;
 
-  const userData = mapUser(fbUser);
+  const userData = mapUser(fbUser, alias);
 
   await setDoc(
     doc(db, "users", fbUser.uid),
     {
-      ...userData,
+      uid: userData.uid,
+      email: userData.email,
+      photoURL: userData.photoURL || null,
+      ...(alias ? { name: userData.name, alias: userData.alias } : {}),
+      showEmail: false,
       lastSeen: serverTimestamp(),
       updatedAt: serverTimestamp(),
     },
@@ -72,7 +82,14 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
 
       if (fbUser) {
-        saveUserProfile(fbUser).catch(console.error);
+        getDoc(doc(db, "users", fbUser.uid))
+          .then((snapshot) => {
+            const profile = snapshot.exists() ? snapshot.data() : null;
+            const alias = profile?.alias || profile?.name;
+            if (alias) setUser(mapUser(fbUser, alias));
+            return saveUserProfile(fbUser);
+          })
+          .catch(console.error);
       }
     });
   }, []);
@@ -97,10 +114,11 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (name, email, password) => {
     try {
+      const alias = name.trim();
       const credential = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(credential.user, { displayName: name });
-      await saveUserProfile({ ...credential.user, displayName: name });
-      setUser(mapUser({ ...credential.user, displayName: name }));
+      await updateProfile(credential.user, { displayName: alias });
+      await saveUserProfile({ ...credential.user, displayName: alias }, alias);
+      setUser(mapUser({ ...credential.user, displayName: alias }, alias));
       return { success: true };
     } catch (error) {
       return { success: false, error: getAuthError(error) };
@@ -110,7 +128,14 @@ export const AuthProvider = ({ children }) => {
   const loginWithGoogle = async () => {
     try {
       const credential = await signInWithPopup(auth, googleProvider);
-      await saveUserProfile(credential.user);
+      const profileSnapshot = await getDoc(doc(db, "users", credential.user.uid));
+      const existingProfile = profileSnapshot.exists() ? profileSnapshot.data() : null;
+      const alias = existingProfile?.alias || existingProfile?.name || getDefaultAlias(credential.user.uid);
+      if (credential.user.displayName !== alias) {
+        await updateProfile(credential.user, { displayName: alias });
+      }
+      await saveUserProfile({ ...credential.user, displayName: alias }, alias);
+      setUser(mapUser({ ...credential.user, displayName: alias }, alias));
       return { success: true };
     } catch (error) {
       return { success: false, error: getAuthError(error) };
@@ -122,8 +147,9 @@ export const AuthProvider = ({ children }) => {
 
     try {
       await updateProfile(auth.currentUser, { photoURL });
-      await saveUserProfile({ ...auth.currentUser, photoURL });
-      setUser(mapUser({ ...auth.currentUser, photoURL }));
+      const alias = user?.alias || user?.name;
+      await saveUserProfile({ ...auth.currentUser, photoURL }, alias);
+      setUser(mapUser({ ...auth.currentUser, photoURL }, alias));
       return { success: true };
     } catch (error) {
       return { success: false, error: getAuthError(error) };
@@ -142,16 +168,21 @@ export const AuthProvider = ({ children }) => {
         await updateProfile(auth.currentUser, authUpdate);
       }
 
-      const nextUser = mapUser({
-        ...auth.currentUser,
-        displayName: name ?? auth.currentUser.displayName,
-        photoURL: photoURL ?? auth.currentUser.photoURL,
-      });
+      const alias = name ?? user?.alias ?? user?.name;
+      const nextUser = mapUser(
+        {
+          ...auth.currentUser,
+          displayName: alias,
+          photoURL: photoURL ?? auth.currentUser.photoURL,
+        },
+        alias
+      );
 
       await setDoc(
         doc(db, "users", auth.currentUser.uid),
         {
           ...nextUser,
+          ...(name !== undefined ? { alias: name } : {}),
           ...(bio !== undefined ? { bio } : {}),
           ...(settings !== undefined ? { settings } : {}),
           updatedAt: serverTimestamp(),

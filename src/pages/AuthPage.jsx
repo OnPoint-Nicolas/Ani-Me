@@ -101,7 +101,7 @@ const AuthPage = () => {
             <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
               {mode === "login"
                 ? "Melde dich an und öffne deinen Anime-Feed."
-                : "Erstelle deinen Account für Community, Manga und Posts."}
+                : "Erstelle deinen Account mit einem öffentlichen Alias. Deine E-Mail bleibt privat."}
             </p>
           </div>
 
@@ -155,7 +155,7 @@ const AuthPage = () => {
               {mode === "register" && (
                 <label className="block">
                   <span className="mb-1.5 block text-xs font-medium text-muted-foreground">
-                    Benutzername
+                    Öffentlicher Alias
                   </span>
                   <div className="flex items-center gap-2 rounded-md border border-anime-border bg-secondary px-3">
                     <User className="h-4 w-4 text-muted-foreground" />
@@ -225,7 +225,7 @@ const AuthPage = () => {
               className="flex h-11 w-full items-center justify-center gap-2 rounded-md border border-anime-border bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-anime-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Mail className="h-4 w-4 text-anime-brand" />
-              Mit Google anmelden
+              Mit Google anmelden, Alias später bearbeiten
             </button>
 
             <p className="mt-5 text-center text-xs text-muted-foreground">

@@ -23,6 +23,12 @@ const isOnline = (lastSeen) => {
   return Date.now() - date.getTime() < 2 * 60 * 1000;
 };
 
+const getPublicUser = (item) => ({
+  ...item,
+  name: item.alias || item.name || "Anime Fan",
+  email: item.settings?.show_email ? item.email : "",
+});
+
 export const useFriends = () => {
   const { user } = useAuth();
   const [users, setUsers] = useState([]);
@@ -38,6 +44,7 @@ export const useFriends = () => {
         snapshot.docs
           .map((item) => ({ id: item.id, ...item.data() }))
           .filter((item) => item.uid !== user.uid)
+          .map(getPublicUser)
       );
     });
   }, [user]);
