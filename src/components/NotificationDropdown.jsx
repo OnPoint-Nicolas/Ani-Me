@@ -1,22 +1,61 @@
-import { useState } from "react";
-import { Bell, Heart, MessageCircle, UserPlus, Star } from "lucide-react";
-
-const initialNotifications = [
-  { id: 1, type: "like", user: "Tim Schau", text: "hat deinen Post geliked", time: "vor 5 Min", read: false },
-  { id: 2, type: "comment", user: "Yuki Watanabe", text: "hat kommentiert: \"Mega cool! 🔥\"", time: "vor 15 Min", read: false },
-  { id: 3, type: "follow", user: "Jason Lee", text: "folgt dir jetzt", time: "vor 1 Std", read: false },
-  { id: 4, type: "mention", user: "Hana Kim", text: "hat dich in einem Post erwähnt", time: "vor 2 Std", read: true },
-  { id: 5, type: "like", user: "Max Müller", text: "hat deinen Kommentar geliked", time: "vor 3 Std", read: true },
-];
+import { useEffect, useState } from "react";
+import { Bell, Heart, MessageCircle, UserPlus, Star, X } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useFriends } from "@/hooks/useFriends";
 
 const NotificationDropdown = () => {
   const [open, setOpen] = useState(false);
-  const [notifications, setNotifications] = useState(initialNotifications);
+  const { user } = useAuth();
+  const { incomingRequests } = useFriends();
+  const storageKey = user?.uid ? `notifications:${user.uid}` : "notifications:guest";
+  const [hiddenIds, setHiddenIds] = useState(() => {
+    try {
+      return JSON.parse(window.localStorage.getItem(`${storageKey}:hidden`) || "[]");
+    } catch {
+      return [];
+    }
+  });
+  const [readIds, setReadIds] = useState(() => {
+    try {
+      return JSON.parse(window.localStorage.getItem(`${storageKey}:read`) || "[]");
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    try {
+      setHiddenIds(JSON.parse(window.localStorage.getItem(`${storageKey}:hidden`) || "[]"));
+      setReadIds(JSON.parse(window.localStorage.getItem(`${storageKey}:read`) || "[]"));
+    } catch {
+      setHiddenIds([]);
+      setReadIds([]);
+    }
+  }, [storageKey]);
+
+  const notifications = incomingRequests
+    .map((request) => ({
+      id: `friend-request-${request.id}`,
+      type: "follow",
+      user: request.fromName,
+      text: "möchte mit dir befreundet sein",
+      time: "neu",
+      read: readIds.includes(`friend-request-${request.id}`),
+    }))
+    .filter((notification) => !hiddenIds.includes(notification.id));
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const markAllRead = () => {
-    setNotifications(notifications.map((n) => ({ ...n, read: true })));
+    const nextReadIds = [...new Set([...readIds, ...notifications.map((notification) => notification.id)])];
+    setReadIds(nextReadIds);
+    window.localStorage.setItem(`${storageKey}:read`, JSON.stringify(nextReadIds));
+  };
+
+  const hideNotification = (id) => {
+    const nextHiddenIds = [...hiddenIds, id];
+    setHiddenIds(nextHiddenIds);
+    window.localStorage.setItem(`${storageKey}:hidden`, JSON.stringify(nextHiddenIds));
   };
 
   const getIcon = (type) => {
@@ -68,6 +107,12 @@ const NotificationDropdown = () => {
             </div>
 
             <div className="max-h-64 overflow-y-auto">
+              {notifications.length === 0 && (
+                <p className="px-3 py-4 text-xs text-muted-foreground">
+                  Keine neuen Benachrichtigungen.
+                </p>
+              )}
+
               {notifications.map((n) => (
                 <div
                   key={n.id}
@@ -90,6 +135,14 @@ const NotificationDropdown = () => {
                   {!n.read && (
                     <span className="w-2 h-2 rounded-full bg-primary mt-1 shrink-0" />
                   )}
+                  <button
+                    type="button"
+                    onClick={() => hideNotification(n.id)}
+                    className="text-muted-foreground hover:text-foreground"
+                    title="Benachrichtigung ausblenden"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               ))}
             </div>

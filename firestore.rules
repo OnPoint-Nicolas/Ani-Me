@@ -49,6 +49,23 @@ service cloud.firestore {
         && request.auth.uid == resource.data.authorUid;
     }
 
+    match /groups/{groupId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.auth.uid == request.resource.data.ownerUid;
+      allow update, delete: if signedIn()
+        && request.auth.uid == resource.data.ownerUid;
+    }
+
+    match /groupMembers/{memberId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.auth.uid == request.resource.data.uid;
+      allow delete: if signedIn()
+        && request.auth.uid == resource.data.uid;
+      allow update: if false;
+    }
+
     match /posts/{postId} {
       allow read: if true;
 

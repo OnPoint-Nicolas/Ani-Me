@@ -14,22 +14,7 @@ import {
 } from "lucide-react";
 import NavBar from "@/components/NavBar";
 import { useFriends } from "@/hooks/useFriends";
-
-const groups = [
-  { name: "Manga Creators", members: 1234, desc: "Für alle die Manga zeichnen und schreiben", joined: false, category: "Kreativ" },
-  { name: "Cosplay Freunde", members: 876, desc: "Teile deine Cosplay Projekte", joined: true, category: "Hobby" },
-  { name: "Anime Reviewer", members: 2341, desc: "Diskutiere die neuesten Anime Serien", joined: false, category: "Diskussion" },
-  { name: "Figure Collectors", members: 567, desc: "Anime Figuren sammeln und tauschen", joined: false, category: "Hobby" },
-  { name: "Fan Art Gallery", members: 1890, desc: "Zeige und bewerte Fan Art Werke", joined: true, category: "Kreativ" },
-  { name: "Anime News", members: 3456, desc: "Aktuelle Nachrichten aus der Anime Welt", joined: false, category: "News" },
-];
-
-const activities = [
-  { user: "Sakura Tanaka", action: "hat ein neues Manga-Panel geteilt", time: "vor 10 Min", type: "post" },
-  { user: "Tim Schau", action: "ist 'Cosplay Freunde' beigetreten", time: "vor 25 Min", type: "group" },
-  { user: "Jason Lee", action: "hat eine neue Review geschrieben", time: "vor 1 Std", type: "post" },
-  { user: "Max Müller", action: "hat 3 neue Figuren hinzugefügt", time: "vor 2 Std", type: "post" },
-];
+import { useGroups } from "@/hooks/useGroups";
 
 const getInitial = (name) => name?.charAt(0)?.toUpperCase() || "?";
 
@@ -48,10 +33,9 @@ const Avatar = ({ person }) => (
 
 const Community = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [joinedGroups, setJoinedGroups] = useState(
-    groups.filter((g) => g.joined).map((g) => g.name)
-  );
   const [activeTab, setActiveTab] = useState("mitglieder");
+  const [groupForm, setGroupForm] = useState({ name: "", desc: "", category: "Allgemein" });
+  const [groupError, setGroupError] = useState("");
   const {
     discoverUsers,
     incomingRequests,
@@ -60,13 +44,19 @@ const Community = () => {
     declineRequest,
     removeFriend,
   } = useFriends();
+  const { groups, memberships, createGroup, joinGroup, leaveGroup } = useGroups();
 
-  const toggleJoin = (groupName) => {
-    setJoinedGroups((prev) =>
-      prev.includes(groupName)
-        ? prev.filter((n) => n !== groupName)
-        : [...prev, groupName]
-    );
+  const submitGroup = async (event) => {
+    event.preventDefault();
+    setGroupError("");
+
+    const result = await createGroup(groupForm);
+    if (!result.success) {
+      setGroupError(result.error || "Gruppe konnte nicht erstellt werden.");
+      return;
+    }
+
+    setGroupForm({ name: "", desc: "", category: "Allgemein" });
   };
 
   const filteredUsers = discoverUsers.filter(
@@ -74,6 +64,35 @@ const Community = () => {
       person.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       person.email?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const filteredGroups = groups.filter(
+    (group) =>
+      group.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      group.category?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const activities = [
+    ...incomingRequests.map((request) => ({
+      id: `request-${request.id}`,
+      user: request.fromName,
+      action: "hat dir eine Freundschaftsanfrage gesendet",
+      time: "neu",
+    })),
+    ...discoverUsers
+      .filter((person) => person.isFriend)
+      .map((person) => ({
+        id: `friend-${person.uid}`,
+        user: person.name,
+        action: person.online ? "ist gerade online" : "ist in deiner Freundesliste",
+        time: person.online ? "jetzt" : "Freund",
+      })),
+    ...memberships.map((membership) => ({
+      id: `group-${membership.id}`,
+      user: "Du",
+      action: `bist in der Gruppe "${membership.groupName}"`,
+      time: "Gruppe",
+    })),
+  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -189,10 +208,41 @@ const Community = () => {
 
         {/* Gruppen */}
         {activeTab === "gruppen" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {groups.map((g) => (
+          <>
+            <form onSubmit={submitGroup} className="mb-4 grid gap-2 rounded-lg border border-anime-border bg-anime-surface p-4 md:grid-cols-[1fr_1fr_160px_auto]">
+              <input
+                value={groupForm.name}
+                onChange={(event) => setGroupForm((prev) => ({ ...prev, name: event.target.value }))}
+                placeholder="Gruppenname"
+                className="rounded-md border border-anime-border bg-secondary px-3 py-2 text-sm text-foreground focus:outline-none"
+              />
+              <input
+                value={groupForm.desc}
+                onChange={(event) => setGroupForm((prev) => ({ ...prev, desc: event.target.value }))}
+                placeholder="Kurze Beschreibung"
+                className="rounded-md border border-anime-border bg-secondary px-3 py-2 text-sm text-foreground focus:outline-none"
+              />
+              <select
+                value={groupForm.category}
+                onChange={(event) => setGroupForm((prev) => ({ ...prev, category: event.target.value }))}
+                className="rounded-md border border-anime-border bg-secondary px-3 py-2 text-sm text-foreground focus:outline-none"
+              >
+                <option>Allgemein</option>
+                <option>Kreativ</option>
+                <option>Diskussion</option>
+                <option>Hobby</option>
+                <option>News</option>
+              </select>
+              <button type="submit" className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
+                Erstellen
+              </button>
+              {groupError && <p className="text-xs text-destructive md:col-span-4">{groupError}</p>}
+            </form>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {filteredGroups.map((g) => (
               <div
-                key={g.name}
+                key={g.id}
                 className="rounded-lg bg-anime-surface border border-anime-border p-4 hover:bg-anime-surface-hover transition-colors"
               >
                 <div className="flex items-start justify-between mb-2">
@@ -214,18 +264,18 @@ const Community = () => {
 
                 <div className="flex items-center justify-between mt-3">
                   <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                    <Users className="w-3 h-3" /> {g.members.toLocaleString()}
+                    <Users className="w-3 h-3" /> Gruppe
                   </span>
 
                   <button
-                    onClick={() => toggleJoin(g.name)}
+                    onClick={() => (g.joined ? leaveGroup(g.id) : joinGroup(g))}
                     className={`px-3 py-1 rounded-md text-[10px] font-medium transition-colors flex items-center gap-1 ${
-                      joinedGroups.includes(g.name)
+                      g.joined
                         ? "bg-anime-online/20 text-anime-online"
                         : "bg-primary text-primary-foreground hover:opacity-90"
                     }`}
                   >
-                    {joinedGroups.includes(g.name) ? (
+                    {g.joined ? (
                       <>
                         <Check className="w-3 h-3" /> Beigetreten
                       </>
@@ -236,15 +286,19 @@ const Community = () => {
                 </div>
               </div>
             ))}
-          </div>
+            {filteredGroups.length === 0 && (
+              <p className="text-sm text-muted-foreground">Noch keine Gruppen vorhanden.</p>
+            )}
+            </div>
+          </>
         )}
 
         {/* Aktivität */}
         {activeTab === "aktivitaet" && (
           <div className="space-y-2">
-            {activities.map((a, i) => (
+            {activities.map((a) => (
               <div
-                key={i}
+                key={a.id}
                 className="rounded-lg bg-anime-surface border border-anime-border p-3 flex items-center gap-3"
               >
                 <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
@@ -261,6 +315,9 @@ const Community = () => {
                 <TrendingUp className="w-3 h-3 text-muted-foreground" />
               </div>
             ))}
+            {activities.length === 0 && (
+              <p className="text-sm text-muted-foreground">Noch keine Aktivitäten vorhanden.</p>
+            )}
           </div>
         )}
       </div>
