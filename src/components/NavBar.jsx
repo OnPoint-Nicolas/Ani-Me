@@ -36,7 +36,7 @@ const NavBar = () => {
   };
 
   return (
-    <nav className="fixed top-0 z-50 flex items-center justify-between border-b border-white/10 bg-anime-surface/80 px-4 py-2 shadow-2xl shadow-black/20 backdrop-blur-xl supports-[backdrop-filter]:bg-anime-surface/65">
+    <nav className="fixed w-full top-0 z-50 flex items-center justify-between border-b border-white/10 bg-anime-surface/80 px-4 py-2 shadow-2xl shadow-black/20 backdrop-blur-xl supports-[backdrop-filter]:bg-anime-surface/65">
       <Link to="/" className="font-brand text-3xl font-bold text-anime-brand drop-shadow-[0_0_18px_hsl(var(--anime-brand)/0.35)]">Ani-Me</Link>
 
       {/* Desktop Nav */}
