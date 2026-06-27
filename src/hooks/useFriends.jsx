@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   collection,
+  deleteDoc,
   doc,
   onSnapshot,
   query,
@@ -102,7 +103,19 @@ export const useFriends = () => {
       .filter((item) => !friendIds.includes(item.uid))
       .filter((item) => !requestedIds.includes(item.uid))
       .filter((item) => !incomingIds.includes(item.uid))
-      .slice(0, 4);
+  }, [friendIds, incomingRequests, sentRequests, users]);
+
+  const discoverUsers = useMemo(() => {
+    const requestedIds = sentRequests.map((request) => request.toUid);
+    const incomingIds = incomingRequests.map((request) => request.fromUid);
+
+    return users.map((item) => ({
+      ...item,
+      online: isOnline(item.lastSeen),
+      isFriend: friendIds.includes(item.uid),
+      requestSent: requestedIds.includes(item.uid),
+      requestIncoming: incomingIds.includes(item.uid),
+    }));
   }, [friendIds, incomingRequests, sentRequests, users]);
 
   const sendRequest = async (targetUser) => {
@@ -146,14 +159,21 @@ export const useFriends = () => {
     });
   };
 
+  const removeFriend = async (friendUid) => {
+    if (!user || !friendUid) return;
+    await deleteDoc(doc(db, "friendships", getFriendshipId(user.uid, friendUid)));
+  };
+
   return {
     friends,
     friendIds,
     suggestions,
+    discoverUsers,
     incomingRequests,
     sentRequests,
     sendRequest,
     acceptRequest,
     declineRequest,
+    removeFriend,
   };
 };

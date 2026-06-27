@@ -4,25 +4,16 @@ import {
   Users,
   MessageCircle,
   UserPlus,
+  UserMinus,
   Search,
   TrendingUp,
-  Crown,
   Shield,
   Star,
   Check,
+  X,
 } from "lucide-react";
 import NavBar from "@/components/NavBar";
-import avatarSakura from "@/assets/avatar-sakura.jpg";
-import avatarTim from "@/assets/avatar-tim.jpg";
-import avatarJason from "@/assets/avatar-jason.jpg";
-import avatarMax from "@/assets/avatar-max.jpg";
-
-const members = [
-  { name: "Sakura Tanaka", role: "Mangaka", online: true, posts: 234, img: avatarSakura, level: "Pro" },
-  { name: "Tim Schau", role: "Cosplayer", online: true, posts: 156, img: avatarTim, level: "Aktiv" },
-  { name: "Jason Lee", role: "Reviewer", online: false, posts: 89, img: avatarJason, level: "Neu" },
-  { name: "Max Müller", role: "Sammler", online: false, posts: 67, img: avatarMax, level: "Aktiv" },
-];
+import { useFriends } from "@/hooks/useFriends";
 
 const groups = [
   { name: "Manga Creators", members: 1234, desc: "Für alle die Manga zeichnen und schreiben", joined: false, category: "Kreativ" },
@@ -40,12 +31,35 @@ const activities = [
   { user: "Max Müller", action: "hat 3 neue Figuren hinzugefügt", time: "vor 2 Std", type: "post" },
 ];
 
+const getInitial = (name) => name?.charAt(0)?.toUpperCase() || "?";
+
+const Avatar = ({ person }) => (
+  <div className="relative">
+    {person.photoURL ? (
+      <img src={person.photoURL} alt={person.name} className="w-12 h-12 rounded-full object-cover" />
+    ) : (
+      <div className="grid w-12 h-12 place-items-center rounded-full bg-secondary text-sm font-bold text-anime-brand">
+        {getInitial(person.name)}
+      </div>
+    )}
+    <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-anime-surface ${person.online ? "bg-anime-online" : "bg-anime-offline"}`} />
+  </div>
+);
+
 const Community = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [joinedGroups, setJoinedGroups] = useState(
     groups.filter((g) => g.joined).map((g) => g.name)
   );
   const [activeTab, setActiveTab] = useState("mitglieder");
+  const {
+    discoverUsers,
+    incomingRequests,
+    sendRequest,
+    acceptRequest,
+    declineRequest,
+    removeFriend,
+  } = useFriends();
 
   const toggleJoin = (groupName) => {
     setJoinedGroups((prev) =>
@@ -55,10 +69,10 @@ const Community = () => {
     );
   };
 
-  const filteredMembers = members.filter(
-    (m) =>
-      m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.role.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredUsers = discoverUsers.filter(
+    (person) =>
+      person.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      person.email?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -75,7 +89,7 @@ const Community = () => {
 
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
-              <Users className="w-3 h-3" /> {members.length} Mitglieder
+              <Users className="w-3 h-3" /> {discoverUsers.length + 1} Mitglieder
             </span>
             <span className="flex items-center gap-1">
               <Shield className="w-3 h-3" /> {groups.length} Gruppen
@@ -119,36 +133,33 @@ const Community = () => {
         {/* Mitglieder */}
         {activeTab === "mitglieder" && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {filteredMembers.map((m) => (
+            {incomingRequests.map((request) => (
+              <div key={request.id} className="rounded-lg bg-anime-surface border border-anime-border p-4 flex items-center gap-3">
+                <Avatar person={{ name: request.fromName, photoURL: request.fromPhotoURL, online: false }} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground truncate">{request.fromName}</p>
+                  <p className="text-[10px] text-muted-foreground">möchte befreundet sein</p>
+                </div>
+                <button type="button" onClick={() => acceptRequest(request)} className="p-2 rounded-md bg-anime-online/20 text-anime-online" title="Annehmen">
+                  <Check className="w-3.5 h-3.5" />
+                </button>
+                <button type="button" onClick={() => declineRequest(request)} className="p-2 rounded-md bg-destructive/10 text-destructive" title="Ablehnen">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+
+            {filteredUsers.map((person) => (
               <div
-                key={m.name}
+                key={person.uid}
                 className="rounded-lg bg-anime-surface border border-anime-border p-4 flex items-center gap-3 hover:bg-anime-surface-hover transition-colors"
               >
-                <div className="relative">
-                  <img
-                    src={m.img}
-                    alt={m.name}
-                    className="w-12 h-12 rounded-full object-cover"
-                  />
-                  <span
-                    className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-anime-surface ${
-                      m.online ? "bg-anime-online" : "bg-anime-offline"
-                    }`}
-                  />
-                </div>
+                <Avatar person={person} />
 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-foreground truncate">
-                      {m.name}
-                    </p>
-                    {m.level === "Pro" && (
-                      <Crown className="w-3 h-3 text-anime-brand" />
-                    )}
-                  </div>
-
-                  <p className="text-[10px] text-muted-foreground">
-                    {m.role} · {m.posts} Posts · {m.level}
+                  <p className="text-sm font-semibold text-foreground truncate">{person.name}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">
+                    {person.isFriend ? "Freund" : person.requestSent ? "Anfrage gesendet" : person.requestIncoming ? "Anfrage offen" : person.email}
                   </p>
                 </div>
 
@@ -157,12 +168,22 @@ const Community = () => {
                     <MessageCircle className="w-3.5 h-3.5" />
                   </button>
 
-                  <button className="p-2 rounded-md bg-secondary hover:bg-primary hover:text-primary-foreground transition-colors">
-                    <UserPlus className="w-3.5 h-3.5" />
-                  </button>
+                  {person.isFriend ? (
+                    <button type="button" onClick={() => removeFriend(person.uid)} className="p-2 rounded-md bg-destructive/10 text-destructive" title="Freund entfernen">
+                      <UserMinus className="w-3.5 h-3.5" />
+                    </button>
+                  ) : (
+                    <button type="button" onClick={() => sendRequest(person)} disabled={person.requestSent || person.requestIncoming} className="p-2 rounded-md bg-secondary hover:bg-primary hover:text-primary-foreground transition-colors disabled:opacity-50" title="Anfrage senden">
+                      <UserPlus className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
+
+            {filteredUsers.length === 0 && incomingRequests.length === 0 && (
+              <p className="text-sm text-muted-foreground">Keine Nutzer gefunden.</p>
+            )}
           </div>
         )}
 
