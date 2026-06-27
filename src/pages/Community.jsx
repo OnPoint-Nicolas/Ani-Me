@@ -133,7 +133,7 @@ const Community = () => {
     declineRequest,
     removeFriend,
   } = useFriends();
-  const { groups, memberships, createGroup, joinGroup, leaveGroup } = useGroups();
+  const { groups, joinedGroups, suggestedGroups, memberships, createGroup, joinGroup, leaveGroup } = useGroups();
 
   const myFavorites = profile?.animeFavorites?.length ? profile.animeFavorites : FAVORITE_OPTIONS.slice(0, 5);
 
@@ -199,7 +199,7 @@ const Community = () => {
   const bestMatch = topMatches[0];
 
   const recommendedGroups = useMemo(() => {
-    const realGroups = groups
+    const realGroups = [...joinedGroups, ...suggestedGroups]
       .map((group) => {
         const text = `${group.name || ""} ${group.desc || ""} ${group.category || ""}`.toLowerCase();
         const shared = myFavorites.filter((favorite) => text.includes(normalize(favorite).split(" ")[0]));
@@ -210,12 +210,12 @@ const Community = () => {
 
     if (realGroups.length > 0) return realGroups.slice(0, 3);
 
-    return [
-      { id: "rec-action", name: "Shonen Power Club", category: "Diskussion", desc: "Für One Piece, Jujutsu Kaisen und Solo Leveling Fans.", matchPercent: 92, sharedFavorites: myFavorites.slice(0, 2) },
-      { id: "rec-dark", name: "Dark Manga Readers", category: "Manga-Buddy", desc: "Berserk, Chainsaw Man und düstere Manga ohne Spoiler.", matchPercent: 88, sharedFavorites: myFavorites.filter((item) => ["Berserk", "Chainsaw Man"].includes(item)) },
-      { id: "rec-romance", name: "Romance Manga Lounge", category: "Empfehlungen", desc: "Neue Romance Manga finden und gemeinsam lesen.", matchPercent: 78, sharedFavorites: myFavorites.filter((item) => item.includes("Romance")) },
-    ];
-  }, [groups, myFavorites]);
+    return suggestedGroups.slice(0, 3).map((group, index) => ({
+      ...group,
+      matchPercent: 92 - index * 8,
+      sharedFavorites: myFavorites.slice(0, Math.max(1, 2 - index)),
+    }));
+  }, [joinedGroups, myFavorites, suggestedGroups]);
 
   const filteredUsers = matchedUsers.filter(
     (person) =>
@@ -224,10 +224,20 @@ const Community = () => {
       person.animeFavorites?.some((favorite) => favorite.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  const groupSearchValue = searchQuery.toLowerCase();
+
+  const matchesGroupSearch = (group) =>
+    group.name?.toLowerCase().includes(groupSearchValue) ||
+    group.category?.toLowerCase().includes(groupSearchValue) ||
+    group.desc?.toLowerCase().includes(groupSearchValue);
+
+  const filteredJoinedGroups = joinedGroups.filter(matchesGroupSearch);
+  const filteredSuggestedGroups = suggestedGroups.filter(matchesGroupSearch);
   const filteredGroups = groups.filter(
     (group) =>
-      group.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      group.category?.toLowerCase().includes(searchQuery.toLowerCase())
+      group.name?.toLowerCase().includes(groupSearchValue) ||
+      group.category?.toLowerCase().includes(groupSearchValue) ||
+      group.desc?.toLowerCase().includes(groupSearchValue)
   );
 
   const activities = [
@@ -320,7 +330,7 @@ const Community = () => {
               <Users className="h-3.5 w-3.5" /> {discoverUsers.length + 1} Mitglieder
             </span>
             <span className="flex items-center gap-1.5">
-              <Shield className="h-3.5 w-3.5" /> {groups.length} Gruppen
+              <Shield className="h-3.5 w-3.5" /> {joinedGroups.length} ausgewählt
             </span>
           </div>
         </div>
@@ -433,6 +443,15 @@ const Community = () => {
                           </div>
                           <span className="rounded-full bg-anime-online/15 px-2 py-1 text-[10px] font-bold text-anime-online">{group.matchPercent}%</span>
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => (group.joined ? leaveGroup(group.id) : joinGroup(group))}
+                          className={`mt-3 rounded-md px-3 py-1.5 text-[10px] font-bold transition-colors ${
+                            group.joined ? "bg-anime-online/20 text-anime-online" : "bg-primary text-primary-foreground"
+                          }`}
+                        >
+                          {group.joined ? "Ausgewählt" : "Auswählen"}
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -549,6 +568,78 @@ const Community = () => {
               {groupError && <p className="text-xs text-destructive md:col-span-4">{groupError}</p>}
             </form>
 
+            <section className="mb-5 rounded-lg border border-white/10 bg-anime-surface/85 p-4 shadow-xl shadow-black/10 backdrop-blur-xl">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-black">Deine ausgewählten Gruppen</h2>
+                  <p className="text-xs text-muted-foreground">Diese Gruppen erscheinen automatisch auf deinem Dashboard.</p>
+                </div>
+                <span className="rounded-full bg-primary/15 px-2.5 py-1 text-xs font-bold text-primary">{joinedGroups.length}</span>
+              </div>
+
+              {filteredJoinedGroups.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  {joinedGroups.length === 0 ? "Du hast noch keine Gruppe ausgewählt." : "Keine ausgewählte Gruppe passt zur Suche."}
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                  {filteredJoinedGroups.map((group) => (
+                    <div key={group.id} className="rounded-lg border border-white/10 bg-white/[0.04] p-4">
+                      <div className="mb-2 flex items-start justify-between gap-3">
+                        <div>
+                          <h3 className="text-sm font-semibold text-foreground">{group.name}</h3>
+                          <span className="rounded bg-anime-online/20 px-1.5 py-0.5 text-[9px] text-anime-online">{group.category}</span>
+                        </div>
+                        <Check className="h-4 w-4 text-anime-online" />
+                      </div>
+                      <p className="min-h-8 text-[10px] text-muted-foreground">{group.desc || "Keine Beschreibung vorhanden."}</p>
+                      <button
+                        type="button"
+                        onClick={() => leaveGroup(group.id)}
+                        className="mt-3 rounded-md bg-destructive/10 px-3 py-1 text-[10px] font-bold text-destructive"
+                      >
+                        Abwählen
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className="mb-5 rounded-lg border border-white/10 bg-anime-surface/85 p-4 shadow-xl shadow-black/10 backdrop-blur-xl">
+              <div className="mb-3">
+                <h2 className="text-lg font-black">Vorgeschlagene Gruppen</h2>
+                <p className="text-xs text-muted-foreground">Hier wählst du Gruppen aus. Danach tauchen sie bei “Deine Gruppen” und auf dem Dashboard auf.</p>
+              </div>
+
+              {filteredSuggestedGroups.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Keine vorgeschlagene Gruppe passt zur Suche.</p>
+              ) : (
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                  {filteredSuggestedGroups.map((group) => (
+                    <div key={group.id} className="rounded-lg border border-white/10 bg-white/[0.04] p-4 transition-all hover:-translate-y-0.5 hover:bg-white/[0.08]">
+                      <div className="mb-2 flex items-start justify-between gap-3">
+                        <div>
+                          <h3 className="text-sm font-semibold text-foreground">{group.name}</h3>
+                          <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[9px] text-primary">{group.category}</span>
+                        </div>
+                        <Star className="h-4 w-4 text-anime-brand" />
+                      </div>
+                      <p className="min-h-8 text-[10px] text-muted-foreground">{group.desc || "Keine Beschreibung vorhanden."}</p>
+                      <button
+                        type="button"
+                        onClick={() => joinGroup(group)}
+                        className="mt-3 rounded-md bg-primary px-3 py-1 text-[10px] font-bold text-primary-foreground"
+                      >
+                        Auswählen
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <h2 className="mb-3 text-lg font-black">Alle Gruppen</h2>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
               {filteredGroups.map((g) => (
                 <div
@@ -591,7 +682,9 @@ const Community = () => {
                 </div>
               ))}
               {filteredGroups.length === 0 && (
-                <p className="text-sm text-muted-foreground">Noch keine Gruppen vorhanden.</p>
+                <p className="text-sm text-muted-foreground">
+                  {groups.length === 0 ? "Noch keine echten Gruppen vorhanden. Wähle oben eine vorgeschlagene Gruppe oder erstelle eine neue." : "Keine Gruppe passt zur Suche."}
+                </p>
               )}
             </div>
           </>

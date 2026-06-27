@@ -9,6 +9,7 @@ import StoriesBar from "@/components/StoriesBar";
 import UploadModal from "@/components/UploadModal";
 import FriendsPanel from "@/components/FriendsPanel";
 import { usePosts } from "@/hooks/usePosts";
+import { useGroups } from "@/hooks/useGroups";
 
 import postImage from "@/assets/post-image.jpg";
 import postImage2 from "@/assets/post-image-2.jpg";
@@ -62,6 +63,7 @@ const AniMe = () => {
   const [trendingManga, setTrendingManga] = useState([]);
   const [trendingLoading, setTrendingLoading] = useState(true);
   const { posts: firePosts, createPost } = usePosts();
+  const { joinedGroups } = useGroups();
 
   useEffect(() => {
     const loadTrending = async () => {
@@ -148,11 +150,29 @@ const AniMe = () => {
             <h2 className="mb-4 flex items-center gap-2 text-lg font-bold">
               <Users className="h-5 w-5 text-primary" /> Deine Gruppen
             </h2>
-            <div className="flex flex-wrap gap-2 text-xs">
-              {["Manga Creators", "Anime News", "AMV Club", "Cosplay"].map((group) => (
-                <span key={group} className="rounded-full bg-secondary px-3 py-1.5 text-muted-foreground">{group}</span>
-              ))}
-            </div>
+            {joinedGroups.length === 0 ? (
+              <div className="space-y-3">
+                <p className="text-xs leading-5 text-muted-foreground">
+                  Du hast noch keine Gruppen ausgewählt. Suche dir in der Community passende Gruppen aus.
+                </p>
+                <Link to="/community" className="inline-flex rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground">
+                  Gruppen finden
+                </Link>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2 text-xs">
+                {joinedGroups.map((group) => (
+                  <Link
+                    key={group.id}
+                    to="/community"
+                    className="rounded-full bg-secondary px-3 py-1.5 text-muted-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+                    title={group.desc || group.category}
+                  >
+                    {group.name}
+                  </Link>
+                ))}
+              </div>
+            )}
           </section>
         </aside>
 
