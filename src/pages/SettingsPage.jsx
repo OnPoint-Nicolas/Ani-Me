@@ -8,20 +8,10 @@ import {
   Palette,
   Globe,
   Check,
-  X
 } from "lucide-react";
 import NavBar from "@/components/NavBar";
-
-const SETTINGS_KEY = "ani-me-settings";
-
-const getStoredSettings = () => {
-  try {
-    const data = localStorage.getItem(SETTINGS_KEY);
-    return data ? JSON.parse(data) : {};
-  } catch {
-    return {};
-  }
-};
+import { useAuth } from "@/hooks/useAuth";
+import { useUserProfile } from "@/hooks/useUserProfile";
 
 const settingsSections = [
   {
@@ -29,9 +19,8 @@ const settingsSections = [
     title: "Profil",
     desc: "Name, Bio und Profilbild bearbeiten",
     items: [
-      { key: "username_change", label: "Benutzername ändern" },
-      { key: "bio_edit", label: "Bio bearbeiten" },
-      { key: "avatar_upload", label: "Profilbild hochladen" },
+      { key: "show_email", label: "E-Mail im Profil anzeigen" },
+      { key: "show_online", label: "Online-Status anzeigen" },
     ],
   },
   {
@@ -51,7 +40,7 @@ const settingsSections = [
     items: [
       { key: "private_profile", label: "Privates Profil" },
       { key: "hide_activity", label: "Aktivitätsstatus verbergen" },
-      { key: "block_users", label: "Blockierte Nutzer anzeigen" },
+      { key: "friend_requests", label: "Freundschaftsanfragen erlauben" },
     ],
   },
   {
@@ -77,12 +66,15 @@ const settingsSections = [
 ];
 
 const SettingsPage = () => {
-  const [settings, setSettings] = useState(getStoredSettings());
+  const { updateUserProfile } = useAuth();
+  const { profile } = useUserProfile();
+  const [settings, setSettings] = useState({});
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-  }, [settings]);
+    if (profile?.settings) setSettings(profile.settings);
+  }, [profile?.settings]);
 
   const toggleSetting = (key) => {
     setSettings((prev) => ({
@@ -92,10 +84,15 @@ const SettingsPage = () => {
     setSaved(false);
   };
 
-  const saveSettings = () => {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  const saveSettings = async () => {
+    setSaving(true);
+    const result = await updateUserProfile({ settings });
+    setSaving(false);
+
+    if (result.success) {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    }
   };
 
   return (
@@ -119,7 +116,7 @@ const SettingsPage = () => {
                 : "bg-primary text-primary-foreground hover:opacity-90"
             }`}
           >
-            {saved ? (
+            {saving ? "Speichert..." : saved ? (
               <>
                 <Check className="w-4 h-4" /> Gespeichert!
               </>
@@ -179,7 +176,7 @@ const SettingsPage = () => {
         </div>
 
         <p className="text-[10px] text-muted-foreground text-center mt-6">
-          💾 Einstellungen werden im localStorage gespeichert.
+          Einstellungen werden in deinem Account gespeichert.
         </p>
       </div>
 

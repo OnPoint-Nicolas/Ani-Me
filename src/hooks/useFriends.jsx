@@ -115,11 +115,13 @@ export const useFriends = () => {
       isFriend: friendIds.includes(item.uid),
       requestSent: requestedIds.includes(item.uid),
       requestIncoming: incomingIds.includes(item.uid),
+      requestDisabled: item.settings?.friend_requests === false,
     }));
   }, [friendIds, incomingRequests, sentRequests, users]);
 
   const sendRequest = async (targetUser) => {
     if (!user) return;
+    if (targetUser.settings?.friend_requests === false) return;
 
     const requestId = `${user.uid}_${targetUser.uid}`;
 

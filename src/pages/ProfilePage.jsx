@@ -14,48 +14,62 @@ import {
 } from "lucide-react";
 import NavBar from "@/components/NavBar";
 import { useAuth } from "@/hooks/useAuth";
+import { useFriends } from "@/hooks/useFriends";
+import { usePosts } from "@/hooks/usePosts";
+import { useUserProfile } from "@/hooks/useUserProfile";
 import UploadModal from "@/components/UploadModal";
 import avatarSakura from "@/assets/avatar-sakura.jpg";
-import postImage from "@/assets/post-image.jpg";
-import postImage2 from "@/assets/post-image-2.jpg";
-import postImage3 from "@/assets/post-image-3.jpg";
 import { Link } from "react-router-dom";
 
-const defaultStats = [
-  { icon: Image, label: "Posts", value: 47 },
-  { icon: Heart, label: "Likes", value: 1283 },
-  { icon: MessageCircle, label: "Kommentare", value: 312 },
-  { icon: TrendingUp, label: "Follower", value: 856 },
-];
-
-const userPosts = [
-  { img: postImage, title: "BOOM Sketch", likes: 234 },
-  { img: postImage2, title: "Kampfszene", likes: 456 },
-  { img: postImage3, title: "Ghibli Landscape", likes: 189 },
-];
-
 const badges = [
-  { emoji: "🎨", label: "Manga Creator" },
-  { emoji: "🔥", label: "Top Poster" },
-  { emoji: "⭐", label: "1K Likes" },
-  { emoji: "💬", label: "Kommentator" },
-  { emoji: "🏆", label: "Quiz Master" },
-  { emoji: "📸", label: "Uploader" },
+  { label: "Manga Creator" },
+  { label: "Top Poster" },
+  { label: "1K Likes" },
+  { label: "Kommentator" },
+  { label: "Quiz Master" },
+  { label: "Uploader" },
 ];
 
 const ProfilePage = () => {
-  const { user, updatePhoto } = useAuth();
+  const { user, updateUserProfile } = useAuth();
+  const { profile } = useUserProfile();
+  const { posts } = usePosts();
+  const { friends } = useFriends();
 
   const [activeTab, setActiveTab] = useState("posts");
   const [isEditing, setIsEditing] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
-  const [bio, setBio] = useState(
-    "Anime & Manga Fan 🎌 · Zeichne gerne Fan-Art und diskutiere über die neuesten Serien."
-  );
+  const [name, setName] = useState(user?.name || "");
+  const [bio, setBio] = useState("");
+  const [message, setMessage] = useState("");
 
-  const displayName = user?.name || "Sakura Tanaka";
-  const displayEmail = user?.email || "sakura@anime.de";
+  const userPosts = posts.filter((post) => post.authorUid === user?.uid);
+  const totalLikes = userPosts.reduce((sum, post) => sum + (post.likes || 0), 0);
+  const mediaPosts = userPosts.filter((post) => post.mediaUrl);
+  const displayName = profile?.name || user?.name || "Anime Fan";
+  const displayEmail = user?.email || "";
   const displayAvatar = user?.photoURL || avatarSakura;
+  const displayBio = profile?.bio || "Noch keine Bio eingetragen.";
+  const settings = profile?.settings || {};
+  const defaultStats = [
+    { icon: Image, label: "Posts", value: userPosts.length },
+    { icon: Heart, label: "Likes", value: totalLikes },
+    { icon: MessageCircle, label: "Medien", value: mediaPosts.length },
+    { icon: TrendingUp, label: "Freunde", value: friends.length },
+  ];
+
+  const startEditing = () => {
+    setName(displayName);
+    setBio(profile?.bio || "");
+    setMessage("");
+    setIsEditing(true);
+  };
+
+  const saveProfile = async () => {
+    const result = await updateUserProfile({ name: name.trim(), bio: bio.trim() });
+    setMessage(result.success ? "Profil gespeichert." : result.error || "Speichern fehlgeschlagen.");
+    if (result.success) setIsEditing(false);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -87,17 +101,23 @@ const ProfilePage = () => {
                 <h1 className="text-lg font-bold text-foreground">
                   {displayName}
                 </h1>
-                {user && (
+                {user && !settings.hide_activity && settings.show_online !== false && (
                   <span className="text-[9px] px-1.5 py-0.5 rounded bg-anime-online/20 text-anime-online font-medium">
                     Online
                   </span>
                 )}
               </div>
 
-              <p className="text-xs text-muted-foreground">{displayEmail}</p>
+              {settings.show_email && <p className="text-xs text-muted-foreground">{displayEmail}</p>}
 
               {isEditing ? (
                 <div className="mt-2">
+                  <input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="mb-2 w-full rounded-md border border-anime-border bg-secondary p-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    placeholder="Benutzername"
+                  />
                   <textarea
                     value={bio}
                     onChange={(e) => setBio(e.target.value)}
@@ -106,7 +126,7 @@ const ProfilePage = () => {
 
                   <div className="flex gap-2 mt-1">
                     <button
-                      onClick={() => setIsEditing(false)}
+                      onClick={saveProfile}
                       className="px-3 py-1 rounded bg-primary text-primary-foreground text-[10px]"
                     >
                       Speichern
@@ -120,12 +140,14 @@ const ProfilePage = () => {
                   </div>
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground mt-2">{bio}</p>
+                <p className="text-xs text-muted-foreground mt-2">{displayBio}</p>
               )}
+
+              {message && <p className="mt-2 text-[10px] text-muted-foreground">{message}</p>}
 
               <div className="flex gap-2 mt-3">
                 <button
-                  onClick={() => setIsEditing(!isEditing)}
+                  onClick={startEditing}
                   className="px-4 py-1.5 rounded-md bg-primary text-primary-foreground text-xs hover:opacity-90 flex items-center gap-1"
                 >
                   <Edit2 className="w-3 h-3" /> Profil bearbeiten
@@ -171,7 +193,6 @@ const ProfilePage = () => {
                 key={b.label}
                 className="px-3 py-2 rounded-lg bg-secondary text-center hover:bg-anime-surface-hover cursor-pointer transition-colors"
               >
-                <span className="text-lg">{b.emoji}</span>
                 <p className="text-[9px] text-muted-foreground mt-0.5">
                   {b.label}
                 </p>
@@ -204,27 +225,35 @@ const ProfilePage = () => {
         {/* Posts Grid */}
         <div className="rounded-lg bg-anime-surface border border-anime-border p-4">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {userPosts.map((p, i) => (
+            {mediaPosts.map((p) => (
               <div
-                key={i}
+                key={p.id}
                 className="rounded-lg overflow-hidden border border-anime-border group cursor-pointer relative"
               >
-                <img
-                  src={p.img}
-                  alt={p.title}
-                  className="w-full aspect-square object-cover group-hover:scale-105 transition-transform duration-300"
-                  loading="lazy"
-                />
+                {p.mediaType === "video" ? (
+                  <video src={p.mediaUrl} className="w-full aspect-square object-cover" />
+                ) : (
+                  <img
+                    src={p.mediaUrl}
+                    alt={p.text || "Post"}
+                    className="w-full aspect-square object-cover group-hover:scale-105 transition-transform duration-300"
+                    loading="lazy"
+                  />
+                )}
 
                 <div className="absolute inset-0 bg-background/0 group-hover:bg-background/50 transition-colors flex items-center justify-center">
                   <span className="text-foreground text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                    <Heart className="w-3 h-3" /> {p.likes}
+                    <Heart className="w-3 h-3" /> {p.likes || 0}
                   </span>
                 </div>
               </div>
             ))}
 
-            {[1, 2, 3].map((i) => (
+            {mediaPosts.length === 0 && (
+              <p className="col-span-full text-sm text-muted-foreground">Noch keine Medien-Posts vorhanden.</p>
+            )}
+
+            {mediaPosts.length > 0 && [1, 2, 3].map((i) => (
               <div
                 key={`ph-${i}`}
                 className="rounded-lg aspect-square bg-secondary border border-anime-border flex items-center justify-center"
@@ -240,8 +269,8 @@ const ProfilePage = () => {
         isOpen={showUpload}
         onClose={() => setShowUpload(false)}
         type="image"
-        onUploaded={async (url) => {
-          await updatePhoto(url);
+        onUploaded={async (fileData) => {
+          await updateUserProfile({ photoURL: fileData.url });
           setShowUpload(false);
         }}
       />

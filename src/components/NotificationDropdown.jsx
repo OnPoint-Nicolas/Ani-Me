@@ -2,11 +2,14 @@ import { useEffect, useState } from "react";
 import { Bell, Heart, MessageCircle, UserPlus, Star, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useFriends } from "@/hooks/useFriends";
+import { useUserProfile } from "@/hooks/useUserProfile";
 
 const NotificationDropdown = () => {
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
+  const { profile } = useUserProfile();
   const { incomingRequests } = useFriends();
+  const notificationsEnabled = profile?.settings?.push_notif !== false;
   const storageKey = user?.uid ? `notifications:${user.uid}` : "notifications:guest";
   const [hiddenIds, setHiddenIds] = useState(() => {
     try {
@@ -44,10 +47,11 @@ const NotificationDropdown = () => {
     }))
     .filter((notification) => !hiddenIds.includes(notification.id));
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const visibleNotifications = notificationsEnabled ? notifications : [];
+  const unreadCount = visibleNotifications.filter((n) => !n.read).length;
 
   const markAllRead = () => {
-    const nextReadIds = [...new Set([...readIds, ...notifications.map((notification) => notification.id)])];
+    const nextReadIds = [...new Set([...readIds, ...visibleNotifications.map((notification) => notification.id)])];
     setReadIds(nextReadIds);
     window.localStorage.setItem(`${storageKey}:read`, JSON.stringify(nextReadIds));
   };
@@ -107,13 +111,19 @@ const NotificationDropdown = () => {
             </div>
 
             <div className="max-h-64 overflow-y-auto">
-              {notifications.length === 0 && (
+              {!notificationsEnabled && (
+                <p className="px-3 py-4 text-xs text-muted-foreground">
+                  Benachrichtigungen sind in den Einstellungen deaktiviert.
+                </p>
+              )}
+
+              {notificationsEnabled && visibleNotifications.length === 0 && (
                 <p className="px-3 py-4 text-xs text-muted-foreground">
                   Keine neuen Benachrichtigungen.
                 </p>
               )}
 
-              {notifications.map((n) => (
+              {visibleNotifications.map((n) => (
                 <div
                   key={n.id}
                   className={`flex items-start gap-2 px-3 py-2.5 hover:bg-secondary/50 transition-colors border-b border-anime-border last:border-0 ${

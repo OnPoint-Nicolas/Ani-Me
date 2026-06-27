@@ -130,12 +130,48 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateUserProfile = async ({ name, photoURL, bio, settings }) => {
+    if (!auth.currentUser) return { success: false, error: "Nicht eingeloggt." };
+
+    try {
+      const authUpdate = {};
+      if (name !== undefined) authUpdate.displayName = name;
+      if (photoURL !== undefined) authUpdate.photoURL = photoURL;
+
+      if (Object.keys(authUpdate).length > 0) {
+        await updateProfile(auth.currentUser, authUpdate);
+      }
+
+      const nextUser = mapUser({
+        ...auth.currentUser,
+        displayName: name ?? auth.currentUser.displayName,
+        photoURL: photoURL ?? auth.currentUser.photoURL,
+      });
+
+      await setDoc(
+        doc(db, "users", auth.currentUser.uid),
+        {
+          ...nextUser,
+          ...(bio !== undefined ? { bio } : {}),
+          ...(settings !== undefined ? { settings } : {}),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      setUser(nextUser);
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: getAuthError(error) };
+    }
+  };
+
   const logout = async () => {
     await signOut(auth);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, loginWithGoogle, logout, updatePhoto }}>
+    <AuthContext.Provider value={{ user, loading, login, register, loginWithGoogle, logout, updatePhoto, updateUserProfile }}>
       {children}
     </AuthContext.Provider>
   );

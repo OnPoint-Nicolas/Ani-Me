@@ -1,11 +1,19 @@
-
-
 import { useState } from "react";
-import { Search, Home, Play, Users, Settings, User, Brain, Menu, X, LogIn, LogOut } from "lucide-react";
+import { Home, Play, Users, Settings, User, Brain, Menu, X, LogIn, LogOut, Search } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import ThemeToggle from "@/components/ThemeToggle";
 import NotificationDropdown from "@/components/NotificationDropdown";
 import { useAuth } from "@/hooks/useAuth";
+
+const MangaSearchIcon = ({ className = "w-5 h-5" }) => (
+  <span className={`relative inline-grid place-items-center ${className}`} aria-hidden="true">
+    <span className="absolute left-[2px] top-[3px] h-[14px] w-[11px] rounded-[2px] border border-current opacity-90" />
+    <span className="absolute left-[7px] top-[3px] h-[14px] w-[11px] rounded-[2px] border border-current bg-current/5 opacity-90" />
+    <span className="absolute left-[5px] top-[6px] h-[1px] w-[4px] rounded-full bg-current opacity-70" />
+    <span className="absolute left-[5px] top-[9px] h-[1px] w-[5px] rounded-full bg-current opacity-50" />
+    <Search className="absolute -right-[1px] bottom-0 h-[10px] w-[10px] stroke-[2.7]" />
+  </span>
+);
 
 const NavBar = () => {
   const location = useLocation();
@@ -15,7 +23,7 @@ const NavBar = () => {
 
   const navItems = [
     { icon: Home, path: "/", label: "Home" },
-    { icon: Search, path: "/manga", label: "Manga Suche" },
+    { icon: MangaSearchIcon, path: "/manga", label: "Manga Suche" },
     { icon: Play, path: "/videos", label: "Videos" },
     { icon: Users, path: "/community", label: "Community" },
     { icon: Brain, path: "/quiz", label: "Quiz" },
@@ -28,20 +36,20 @@ const NavBar = () => {
   };
 
   return (
-    <nav className="flex items-center justify-between px-4 py-2 border-b border-anime-border bg-anime-surface relative">
-      <Link to="/" className="font-brand text-3xl font-bold text-anime-brand">Ani-Me</Link>
+    <nav className="sticky top-0 z-50 flex items-center justify-between border-b border-white/10 bg-anime-surface/80 px-4 py-2 shadow-2xl shadow-black/20 backdrop-blur-xl supports-[backdrop-filter]:bg-anime-surface/65">
+      <Link to="/" className="font-brand text-3xl font-bold text-anime-brand drop-shadow-[0_0_18px_hsl(var(--anime-brand)/0.35)]">Ani-Me</Link>
 
       {/* Desktop Nav */}
-      <div className="hidden md:flex items-center gap-6">
+      <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-black/20 p-1 shadow-inner shadow-white/5 md:flex">
         {navItems.map((item) => (
           <Link
             key={item.path}
             to={item.path}
             title={item.label}
-            className={`transition-colors ${
+            className={`grid h-10 w-10 place-items-center rounded-full transition-all ${
               location.pathname === item.path
-                ? "text-anime-brand"
-                : "text-muted-foreground hover:text-foreground"
+                ? "bg-white text-black shadow-lg shadow-white/10"
+                : "text-muted-foreground hover:bg-white/10 hover:text-foreground"
             }`}
           >
             <item.icon className="w-5 h-5" />
@@ -84,7 +92,8 @@ const NavBar = () => {
         {/* Hamburger */}
         <button
           onClick={() => setMenuOpen(!menuOpen)}
-          className="md:hidden p-1.5 rounded-md bg-secondary text-foreground"
+          className="rounded-md bg-white/10 p-1.5 text-foreground md:hidden"
+          title="Menü"
         >
           {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
@@ -92,7 +101,7 @@ const NavBar = () => {
 
       {/* Mobile Menu */}
       {menuOpen && (
-        <div className="absolute top-full left-0 right-0 z-50 bg-anime-surface border-b border-anime-border md:hidden animate-in slide-in-from-top-2 duration-200">
+        <div className="absolute left-0 right-0 top-full z-50 border-b border-white/10 bg-anime-surface/95 shadow-2xl shadow-black/30 backdrop-blur-xl md:hidden animate-in slide-in-from-top-2 duration-200">
           <div className="p-4 space-y-1">
             {navItems.map((item) => (
               <Link

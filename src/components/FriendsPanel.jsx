@@ -90,9 +90,9 @@ const FriendsPanel = () => {
                 </div>
                 <p className="mt-2 truncate text-xs font-semibold">{person.name}</p>
                 <p className="truncate text-[10px] text-muted-foreground">
-                  {person.isFriend ? "Freund" : person.requestSent ? "Angefragt" : person.requestIncoming ? "Anfrage offen" : "Nutzer"}
+                  {person.isFriend ? "Freund" : person.requestSent ? "Angefragt" : person.requestIncoming ? "Anfrage offen" : person.requestDisabled ? "Anfragen aus" : "Nutzer"}
                 </p>
-                {!person.isFriend && !person.requestSent && !person.requestIncoming && (
+                {!person.isFriend && !person.requestSent && !person.requestIncoming && !person.requestDisabled && (
                   <button type="button" onClick={() => sendRequest(person)} className="mx-auto mt-2 grid h-8 w-8 place-items-center rounded-md bg-primary text-primary-foreground" title="Anfrage senden">
                     <UserPlus className="h-4 w-4" />
                   </button>
