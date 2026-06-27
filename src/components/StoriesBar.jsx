@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Image, Plus, Video, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useStories } from "@/hooks/useStories";
+import UploadModal from "@/components/UploadModal";
 
 const getInitial = (name) => name?.charAt(0)?.toUpperCase() || "?";
 
@@ -23,23 +24,31 @@ const AvatarCircle = ({ name, photoURL, children, onClick, title }) => (
 
 const StoriesBar = () => {
   const { user } = useAuth();
-  const { stories, createStory, error } = useStories();
+  const { stories, createStory, markStoryAsViewed, error } = useStories();
   const [showCreate, setShowCreate] = useState(false);
   const [selectedStory, setSelectedStory] = useState(null);
+  const [uploadType, setUploadType] = useState(null);
+  const [media, setMedia] = useState(null);
   const [text, setText] = useState("");
   const [formError, setFormError] = useState("");
+
+  const openStory = (story) => {
+    setSelectedStory(story);
+    markStoryAsViewed(story.id);
+  };
 
   const submitStory = async (event) => {
     event.preventDefault();
     setFormError("");
 
-    const result = await createStory(text);
+    const result = await createStory(text, media);
     if (!result.success) {
       setFormError(result.error || "Story konnte nicht gespeichert werden.");
       return;
     }
 
     setText("");
+    setMedia(null);
     setShowCreate(false);
   };
 
@@ -58,13 +67,19 @@ const StoriesBar = () => {
         </AvatarCircle>
 
         {stories.map((story) => (
-          <AvatarCircle
-            key={story.id}
-            name={story.authorName}
-            photoURL={story.authorPhotoURL}
-            onClick={() => setSelectedStory(story)}
-            title={`${story.authorName}: Story ansehen`}
-          />
+          <div key={story.id} className="relative">
+            <AvatarCircle
+              name={story.authorUid === user?.uid ? "Deine Story" : story.authorName}
+              photoURL={story.authorPhotoURL}
+              onClick={() => openStory(story)}
+              title={`${story.authorName}: Story ansehen`}
+            />
+            {story.isNew && (
+              <span className="absolute left-1/2 top-0 -translate-x-1/2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
+                Neu
+              </span>
+            )}
+          </div>
         ))}
 
         {error && <p className="self-center text-xs text-destructive">{error}</p>}
@@ -80,6 +95,19 @@ const StoriesBar = () => {
               </button>
             </div>
 
+            {media && (
+              <div className="mb-3 rounded-md border border-anime-border bg-background p-2">
+                {media.type === "image" ? (
+                  <img src={media.url} alt="Story-Vorschau" className="max-h-48 w-full rounded object-contain" />
+                ) : (
+                  <video src={media.url} controls className="max-h-48 w-full rounded bg-black" />
+                )}
+                <button type="button" onClick={() => setMedia(null)} className="mt-2 text-xs text-muted-foreground hover:text-foreground">
+                  Medium entfernen
+                </button>
+              </div>
+            )}
+
             <textarea
               value={text}
               onChange={(event) => setText(event.target.value)}
@@ -88,8 +116,16 @@ const StoriesBar = () => {
               className="h-28 w-full resize-none rounded-md border border-anime-border bg-secondary p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             />
             <div className="mt-2 flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">{text.length}/180</span>
-              <button type="submit" disabled={!text.trim()} className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => setUploadType("image")} title="Bild hinzufügen" className="grid h-8 w-8 place-items-center rounded-md bg-secondary text-muted-foreground hover:text-foreground">
+                  <Image className="h-4 w-4" />
+                </button>
+                <button type="button" onClick={() => setUploadType("video")} title="Video hinzufügen" className="grid h-8 w-8 place-items-center rounded-md bg-secondary text-muted-foreground hover:text-foreground">
+                  <Video className="h-4 w-4" />
+                </button>
+                <span className="text-xs text-muted-foreground">{text.length}/180</span>
+              </div>
+              <button type="submit" disabled={!text.trim() && !media} className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">
                 Teilen
               </button>
             </div>
@@ -111,10 +147,26 @@ const StoriesBar = () => {
                 <X className="h-5 w-5" />
               </button>
             </div>
+            {selectedStory.mediaUrl && selectedStory.mediaType === "image" && (
+              <img src={selectedStory.mediaUrl} alt="Story" className="mb-4 max-h-[60vh] w-full rounded-md object-contain" />
+            )}
+            {selectedStory.mediaUrl && selectedStory.mediaType === "video" && (
+              <video src={selectedStory.mediaUrl} controls autoPlay className="mb-4 max-h-[60vh] w-full rounded-md bg-black" />
+            )}
             <p className="text-sm leading-relaxed text-foreground">{selectedStory.text}</p>
           </article>
         </div>
       )}
+
+      <UploadModal
+        isOpen={Boolean(uploadType)}
+        onClose={() => setUploadType(null)}
+        type={uploadType || "image"}
+        onUploaded={(fileData) => {
+          setMedia(fileData);
+          setUploadType(null);
+        }}
+      />
     </>
   );
 };

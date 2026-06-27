@@ -20,6 +20,28 @@ export const useStories = () => {
   const [stories, setStories] = useState([]);
   const [error, setError] = useState("");
   const [now, setNow] = useState(() => Date.now());
+  const [viewedStoryIds, setViewedStoryIds] = useState(() => {
+    if (typeof window === "undefined" || !user?.uid) return [];
+
+    try {
+      return JSON.parse(window.localStorage.getItem(`viewedStories:${user.uid}`) || "[]");
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    if (!user?.uid) {
+      setViewedStoryIds([]);
+      return;
+    }
+
+    try {
+      setViewedStoryIds(JSON.parse(window.localStorage.getItem(`viewedStories:${user.uid}`) || "[]"));
+    } catch {
+      setViewedStoryIds([]);
+    }
+  }, [user?.uid]);
 
   useEffect(() => {
     const q = query(collection(db, "stories"), orderBy("createdAt", "desc"));
@@ -45,6 +67,7 @@ export const useStories = () => {
   const visibleStories = useMemo(() => {
     const activeAfter = now - DAY_IN_MS;
     const allowedAuthorIds = new Set(friendIds);
+    if (user?.uid) allowedAuthorIds.add(user.uid);
 
     return stories
       .filter((story) => {
@@ -54,16 +77,19 @@ export const useStories = () => {
       .filter((story) => allowedAuthorIds.has(story.authorUid))
       .reduce((latestByAuthor, story) => {
         if (!latestByAuthor.some((item) => item.authorUid === story.authorUid)) {
-          latestByAuthor.push(story);
+          latestByAuthor.push({
+            ...story,
+            isNew: story.authorUid !== user?.uid && !viewedStoryIds.includes(story.id),
+          });
         }
 
         return latestByAuthor;
       }, []);
-  }, [friendIds, now, stories]);
+  }, [friendIds, now, stories, user?.uid, viewedStoryIds]);
 
-  const createStory = async (text) => {
+  const createStory = async (text, media) => {
     if (!user) return { success: false, error: "Bitte einloggen." };
-    if (!text.trim()) return { success: false, error: "Story ist leer." };
+    if (!text.trim() && !media?.url) return { success: false, error: "Story ist leer." };
 
     try {
       await addDoc(collection(db, "stories"), {
@@ -71,6 +97,8 @@ export const useStories = () => {
         authorName: user.name || "Anime Fan",
         authorPhotoURL: user.photoURL || null,
         text: text.trim(),
+        mediaUrl: media?.url || null,
+        mediaType: media?.type || null,
         createdAt: serverTimestamp(),
         expiresAt: Timestamp.fromMillis(Date.now() + DAY_IN_MS),
       });
@@ -84,5 +112,13 @@ export const useStories = () => {
     }
   };
 
-  return { stories: visibleStories, createStory, error };
+  const markStoryAsViewed = (storyId) => {
+    if (!user?.uid || !storyId || viewedStoryIds.includes(storyId)) return;
+
+    const nextViewedStoryIds = [...viewedStoryIds, storyId];
+    setViewedStoryIds(nextViewedStoryIds);
+    window.localStorage.setItem(`viewedStories:${user.uid}`, JSON.stringify(nextViewedStoryIds));
+  };
+
+  return { stories: visibleStories, createStory, markStoryAsViewed, error };
 };
